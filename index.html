@@ -318,61 +318,62 @@
     reader.readAsDataURL(file);
   }
 
-  async function uploadImage() {
-    if (!selectedFile) return;
-    showOverlay('กำลังอัปโหลดรูป...');
-    document.getElementById('btn-upload').disabled = true;
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        const url = new URL(WEBAPP_URL);
-        url.searchParams.set('action', 'upload');
-        url.searchParams.set('groupId', groupId || '');
-        url.searchParams.set('userId', userId || '');
-        url.searchParams.set('displayName', displayName || '');
-        url.searchParams.set('imageBase64', e.target.result.split(',')[1]);
-        const res = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
-        const data = await res.json();
-        hideOverlay();
-        if (data.status === 'ok') {
-          setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
-          setTimeout(() => liff.closeWindow(), 2000);
-        } else {
-          setStatus('❌ ' + (data.message || 'เกิดข้อผิดพลาด'), 'error');
-          document.getElementById('btn-upload').disabled = false;
-        }
-      } catch(err) {
-        hideOverlay();
-        setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
-        document.getElementById('btn-upload').disabled = false;
-      }
-    };
-    reader.readAsDataURL(selectedFile);
-  }
-
-  async function confirmNoSettlement() {
-    if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
-    showOverlay('กำลังบันทึก...');
+async function uploadImage() {
+  if (!selectedFile) return;
+  showOverlay('กำลังอัปโหลดรูป...');
+  document.getElementById('btn-upload').disabled = true;
+  const reader = new FileReader();
+  reader.onload = async e => {
     try {
-      const url = new URL(WEBAPP_URL);
-      url.searchParams.set('action', 'noSettlement');
-      url.searchParams.set('groupId', groupId || '');
-      url.searchParams.set('userId', userId || '');
-      url.searchParams.set('displayName', displayName || '');
-      const res = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
-      const data = await res.json();
+      const res = await fetch(WEBAPP_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'upload',
+          groupId: groupId || '',
+          userId: userId || '',
+          displayName: displayName || '',
+          imageBase64: e.target.result.split(',')[1]
+        })
+      });
       hideOverlay();
-      if (data.status === 'ok') {
-        setStatus('✅ บันทึกแล้วครับ ไม่มี Settlement วันนี้', 'success');
-        setTimeout(() => liff.closeWindow(), 2000);
-      } else {
-        setStatus('❌ ' + (data.message || 'เกิดข้อผิดพลาด'), 'error');
-      }
+      setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
+      setTimeout(() => liff.closeWindow(), 2000);
     } catch(err) {
       hideOverlay();
       setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
+      document.getElementById('btn-upload').disabled = false;
     }
+  };
+  reader.readAsDataURL(selectedFile);
+}
+async function confirmNoSettlement() {
+  if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
+  showOverlay('กำลังบันทึก...');
+
+  try {
+    const res = await fetch(WEBAPP_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({
+        action: 'noSettlement',
+        groupId: groupId || '',
+        userId: userId || '',
+        displayName: displayName || ''
+      })
+    });
+
+    hideOverlay();
+    setStatus('✅ บันทึกแล้วครับ ไม่มี Settlement วันนี้', 'success');
+    setTimeout(() => liff.closeWindow(), 2000);
+
+  } catch(err) {
+    hideOverlay();
+    setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
   }
+}
 
   function setStatus(msg, type) {
     const el = document.getElementById('status');
