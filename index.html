@@ -185,24 +185,35 @@ async function init() {
     reader.readAsDataURL(selectedFile);
   }
 
-  async function confirmNoSettlement() {
-    if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
-    showOverlay('กำลังบันทึก...');
-    try {
-      await sendToScript({
-        action: 'noSettlement',
-        groupId: groupId || '',
-        userId: userId || '',
-        displayName: displayName || ''
-      });
-      hideOverlay();
-      setStatus('✅ บันทึกแล้วครับ ไม่มี Settlement วันนี้', 'success');
-      setTimeout(() => liff.closeWindow(), 2000);
-    } catch(err) {
-      hideOverlay();
-      setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
-    }
+async function confirmNoSettlement() {
+  if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
+  showOverlay('กำลังบันทึก...');
+  
+  try {
+    const url = new URL(WEBAPP_URL);
+    url.searchParams.set('action', 'noSettlement');
+    url.searchParams.set('groupId', groupId || '');
+    url.searchParams.set('userId', userId || '');
+    url.searchParams.set('displayName', displayName || '');
+    
+    // แสดง URL ที่จะส่ง
+    alert('กำลังส่งไป:\n' + url.toString().substring(0, 100));
+    
+    const res = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
+    const text = await res.text();
+    
+    alert('Response: ' + text.substring(0, 100));
+    
+    hideOverlay();
+    setStatus('✅ บันทึกแล้วครับ', 'success');
+    setTimeout(() => liff.closeWindow(), 2000);
+    
+  } catch(err) {
+    hideOverlay();
+    alert('Error: ' + err.message);
+    setStatus('❌ ' + err.message, 'error');
   }
+}
 
   function setStatus(msg, type) {
     const el = document.getElementById('status');
