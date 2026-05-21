@@ -110,30 +110,41 @@
   fixSize();
   window.addEventListener('resize', fixSize);
 
-  async function init() {
-    try {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isInClient()) { setStatus('❌ กรุณาเปิดในแอป LINE เท่านั้น', 'error'); return; }
-      if (!liff.isLoggedIn()) { liff.login(); return; }
+async function init() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isInClient()) { setStatus('❌ กรุณาเปิดในแอป LINE เท่านั้น', 'error'); return; }
+    if (!liff.isLoggedIn()) { liff.login(); return; }
 
-      const profile = await liff.getProfile();
-      userId = profile.userId;
-      displayName = profile.displayName;
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+    displayName = profile.displayName;
 
-      // ดึง groupId จาก URL params ที่ Bot ส่งมา
-      const urlParams = new URLSearchParams(window.location.search);
-      groupId = urlParams.get('groupId') || null;
+    // ลองดึง groupId จากหลายแหล่ง
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+    const ctx = liff.getContext();
 
-      document.getElementById('user-name').textContent = displayName;
-      document.getElementById('user-card').style.display = 'flex';
+    groupId = urlParams.get('groupId')      // จาก URL params
+      || hashParams.get('groupId')          // จาก hash
+      || ctx?.groupId                       // จาก LIFF context
+      || null;
 
-      if (!groupId) {
-        setStatus('❌ ไม่พบข้อมูลกลุ่ม กรุณากดปุ่มจาก LINE ที่ Bot ส่งมาเท่านั้น', 'error');
-      }
-    } catch(err) {
-      setStatus('❌ ' + err.message, 'error');
+    // แสดงให้รู้ว่าได้อะไรมา
+    setStatus('groupId: ' + groupId, 'loading');
+
+    document.getElementById('user-name').textContent = displayName;
+    document.getElementById('user-card').style.display = 'flex';
+
+    if (!groupId) {
+      setStatus('❌ ไม่พบข้อมูลกลุ่ม กรุณากดปุ่มจาก LINE ที่ Bot ส่งมาเท่านั้น', 'error');
+    } else {
+      setStatus('', '');
     }
+  } catch(err) {
+    setStatus('❌ ' + err.message, 'error');
   }
+}
 
   function handleFile(input) {
     const file = input.files[0];
