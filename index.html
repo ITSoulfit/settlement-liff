@@ -113,23 +113,27 @@
   fixSize();
   window.addEventListener('resize', fixSize);
 
-  async function init() {
-    try {
-      await liff.init({ liffId: LIFF_ID });
-      if (!liff.isInClient()) { setStatus('❌ กรุณาเปิดในแอป LINE เท่านั้น', 'error'); return; }
-      if (!liff.isLoggedIn()) { liff.login(); return; }
-      const profile = await liff.getProfile();
-      userId = profile.userId;
-      displayName = profile.displayName;
-      const ctx = liff.getContext();
-      groupId = ctx?.groupId || null;
-      document.getElementById('user-name').textContent = displayName;
-      document.getElementById('user-card').style.display = 'flex';
-      if (!groupId) setStatus('❌ กรุณาเปิดจากกลุ่ม LINE เท่านั้น', 'error');
-    } catch(err) {
-      setStatus('❌ ' + err.message, 'error');
-    }
+async function init() {
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isInClient()) { setStatus('❌ กรุณาเปิดในแอป LINE เท่านั้น', 'error'); return; }
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+    displayName = profile.displayName;
+    const ctx = liff.getContext();
+    groupId = ctx?.groupId || null;
+
+    // เพิ่มบรรทัดนี้
+    alert('groupId=' + groupId + '\ntype=' + ctx?.type);
+
+    document.getElementById('user-name').textContent = displayName;
+    document.getElementById('user-card').style.display = 'flex';
+    if (!groupId) setStatus('❌ กรุณาเปิดจากกลุ่ม LINE เท่านั้น', 'error');
+  } catch(err) {
+    setStatus('❌ ' + err.message, 'error');
   }
+}
 
   function handleFile(input) {
     const file = input.files[0];
