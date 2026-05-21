@@ -169,31 +169,66 @@ async function init() {
     await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
   }
 
-  async function uploadImage() {
-    if (!selectedFile) return;
-    showOverlay('กำลังอัปโหลดรูป...');
-    document.getElementById('btn-upload').disabled = true;
-    const reader = new FileReader();
-    reader.onload = async e => {
-      try {
-        await sendToScript({
-          action: 'upload',
-          groupId: groupId || '',
-          userId: userId || '',
-          displayName: displayName || '',
-          imageBase64: e.target.result.split(',')[1]
-        });
-        hideOverlay();
-        setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
-        setTimeout(() => liff.closeWindow(), 2000);
-      } catch(err) {
-        hideOverlay();
-        setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
-        document.getElementById('btn-upload').disabled = false;
-      }
-    };
-    reader.readAsDataURL(selectedFile);
+async function uploadImage() {
+  if (!selectedFile) return;
+  showOverlay('กำลังอัปโหลดรูป...');
+  document.getElementById('btn-upload').disabled = true;
+
+  try {
+    // ย่อรูปก่อนส่ง
+    const compressedBase64 = await compressImage(selectedFile, 800, 0.7);
+
+    await sendToScript({
+      action: 'upload',
+      groupId: groupId || '',
+      userId: userId || '',
+      displayName: displayName || '',
+      imageBase64: compressedBase64
+    });
+
+    hideOverlay();
+    setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
+    setTimeout(() => liff.closeWindow(), 2000);
+  } catch(err) {
+    hideOverlay();
+    setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
+    document.getElementById('btn-upload').disabled = false;
   }
+}
+
+// ฟังก์ชันย่อรูป
+function compressImage(file, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // ย่อขนาดถ้าใหญ่เกิน
+        if (width > maxWidth) {
+          height = Math.round(height * maxWidth / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // แปลงเป็น base64 ที่ย่อแล้ว
+        const base64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+        resolve(base64);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
   async function confirmNoSettlement() {
     if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
