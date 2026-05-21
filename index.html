@@ -177,42 +177,41 @@
     });
   }
 
-  async function uploadImage() {
-    if (!selectedFile) return;
-    showOverlay('กำลังย่อรูป...');
-    document.getElementById('btn-upload').disabled = true;
+async function uploadImage() {
+  if (!selectedFile) return;
+  showOverlay('กำลังย่อรูป...');
+  document.getElementById('btn-upload').disabled = true;
 
-    try {
-      const compressedBase64 = await compressImage(selectedFile, 1200, 0.6);
-      const chunkSize = 50000;
-      const chunks = [];
-      for (let i = 0; i < compressedBase64.length; i += chunkSize) {
-        chunks.push(compressedBase64.substring(i, i + chunkSize));
-      }
+  try {
+    const compressedBase64 = await compressImage(selectedFile, 800, 0.5);
+    showOverlay('กำลังส่ง...');
 
-      for (let i = 0; i < chunks.length; i++) {
-        showOverlay(`กำลังส่ง ${i + 1}/${chunks.length}...`);
-        const url = new URL(WEBAPP_URL);
-        url.searchParams.set('action', 'uploadChunk');
-        url.searchParams.set('groupId', groupId || '');
-        url.searchParams.set('displayName', encodeURIComponent(displayName || ''));
-        url.searchParams.set('chunk', chunks[i]);
-        url.searchParams.set('chunkIndex', i);
-        url.searchParams.set('totalChunks', chunks.length);
-        await pingUrl(url.toString());
-        // รอเล็กน้อยระหว่าง chunk
-        await new Promise(r => setTimeout(r, 300));
-      }
+    const url = new URL(WEBAPP_URL);
+    url.searchParams.set('action', 'uploadChunk');
+    url.searchParams.set('groupId', groupId || '');
+    url.searchParams.set('displayName', displayName || '');
+    url.searchParams.set('chunk', compressedBase64);
+    url.searchParams.set('chunkIndex', '0');
+    url.searchParams.set('totalChunks', '1');
 
-      hideOverlay();
-      setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
-      setTimeout(() => liff.closeWindow(), 2000);
-    } catch(err) {
-      hideOverlay();
-      setStatus('❌ ' + err.message, 'error');
-      document.getElementById('btn-upload').disabled = false;
-    }
+    // ใช้ XHR แทน fetch — ไม่ติด CORS
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url.toString(), true);
+      xhr.onload = resolve;
+      xhr.onerror = reject;
+      xhr.send();
+    });
+
+    hideOverlay();
+    setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
+    setTimeout(() => liff.closeWindow(), 2000);
+  } catch(err) {
+    hideOverlay();
+    setStatus('❌ ' + err.message, 'error');
+    document.getElementById('btn-upload').disabled = false;
   }
+}
 
   async function confirmNoSettlement() {
     if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
