@@ -168,61 +168,58 @@
     });
   }
 
-  // ส่ง GET request ผ่าน Image tag — ไม่ติด CORS เลย
-  function pingUrl(url) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = img.onerror = () => resolve();
-      img.src = url + '&_=' + Date.now();
-    });
+  async function uploadImage() {
+    if (!selectedFile) return;
+    showOverlay('กำลังย่อรูป...');
+    document.getElementById('btn-upload').disabled = true;
+
+    try {
+      const compressedBase64 = await compressImage(selectedFile, 800, 0.5);
+      showOverlay('กำลังส่ง...');
+
+      // เปลี่ยนเป็น POST แก้ปัญหา URL ยาวเกิน
+      const body = new URLSearchParams({
+        action: 'uploadChunk',
+        groupId: groupId || '',
+        displayName: displayName || '',
+        chunk: compressedBase64,
+        chunkIndex: '0',
+        totalChunks: '1'
+      });
+
+      await fetch(WEBAPP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      });
+
+      hideOverlay();
+      setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
+      setTimeout(() => liff.closeWindow(), 2000);
+    } catch(err) {
+      hideOverlay();
+      setStatus('❌ ' + err.message, 'error');
+      document.getElementById('btn-upload').disabled = false;
+    }
   }
-
-async function uploadImage() {
-  if (!selectedFile) return;
-  showOverlay('กำลังย่อรูป...');
-  document.getElementById('btn-upload').disabled = true;
-
-  try {
-    const compressedBase64 = await compressImage(selectedFile, 800, 0.5);
-    showOverlay('กำลังส่ง...');
-
-    const url = new URL(WEBAPP_URL);
-    url.searchParams.set('action', 'uploadChunk');
-    url.searchParams.set('groupId', groupId || '');
-    url.searchParams.set('displayName', displayName || '');
-    url.searchParams.set('chunk', compressedBase64);
-    url.searchParams.set('chunkIndex', '0');
-    url.searchParams.set('totalChunks', '1');
-
-    // ใช้ XHR แทน fetch — ไม่ติด CORS
-    await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', url.toString(), true);
-      xhr.onload = resolve;
-      xhr.onerror = reject;
-      xhr.send();
-    });
-
-    hideOverlay();
-    setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
-    setTimeout(() => liff.closeWindow(), 2000);
-  } catch(err) {
-    hideOverlay();
-    setStatus('❌ ' + err.message, 'error');
-    document.getElementById('btn-upload').disabled = false;
-  }
-}
 
   async function confirmNoSettlement() {
     if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
     showOverlay('กำลังบันทึก...');
     try {
-      const url = new URL(WEBAPP_URL);
-      url.searchParams.set('action', 'noSettlement');
-      url.searchParams.set('groupId', groupId || '');
-      url.searchParams.set('userId', userId || '');
-      url.searchParams.set('displayName', encodeURIComponent(displayName || ''));
-      await pingUrl(url.toString());
+      const body = new URLSearchParams({
+        action: 'noSettlement',
+        groupId: groupId || '',
+        userId: userId || '',
+        displayName: displayName || ''
+      });
+
+      await fetch(WEBAPP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString()
+      });
+
       hideOverlay();
       setStatus('✅ บันทึกแล้วครับ ไม่มี Settlement วันนี้', 'success');
       setTimeout(() => liff.closeWindow(), 2000);
