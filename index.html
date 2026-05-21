@@ -175,18 +175,18 @@ async function uploadImage() {
   document.getElementById('btn-upload').disabled = true;
 
   try {
-    // ย่อรูปให้เหลือแค่ 400KB ก่อน
     const compressedBase64 = await compressImage(selectedFile, 1200, 0.6);
+    alert('ขนาดหลังย่อ: ' + Math.round(compressedBase64.length / 1024) + ' KB');
 
-    // แบ่งส่งเป็น chunk ละ 50000 ตัวอักษร
     const chunkSize = 50000;
     const chunks = [];
     for (let i = 0; i < compressedBase64.length; i += chunkSize) {
       chunks.push(compressedBase64.substring(i, i + chunkSize));
     }
+    alert('จำนวน chunk: ' + chunks.length);
 
-    // ส่ง chunk แรกพร้อม metadata
     for (let i = 0; i < chunks.length; i++) {
+      showOverlay(`กำลังส่ง ${i+1}/${chunks.length}...`);
       const url = new URL(WEBAPP_URL);
       url.searchParams.set('action', 'uploadChunk');
       url.searchParams.set('groupId', groupId || '');
@@ -194,7 +194,9 @@ async function uploadImage() {
       url.searchParams.set('chunk', chunks[i]);
       url.searchParams.set('chunkIndex', i);
       url.searchParams.set('totalChunks', chunks.length);
-      await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
+      const res = await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
+      const text = await res.text();
+      if (i === 0) alert('Response chunk 0: ' + text.substring(0, 100));
     }
 
     hideOverlay();
@@ -202,6 +204,7 @@ async function uploadImage() {
     setTimeout(() => liff.closeWindow(), 2000);
   } catch(err) {
     hideOverlay();
+    alert('Error: ' + err.message);
     setStatus('❌ ' + err.message, 'error');
     document.getElementById('btn-upload').disabled = false;
   }
