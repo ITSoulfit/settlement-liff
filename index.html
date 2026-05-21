@@ -26,7 +26,7 @@
     .preview { width: 100%; height: 160px; border: 2px dashed var(--gray-border); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: var(--gray-bg); overflow: hidden; }
     .preview.has-image { border: 2px solid var(--green); }
     .preview:active { opacity: 0.8; }
-    .preview img { width: 100%; height: 100%; object-fit: cover; }
+    .preview img#preview-img { width: 100%; height: 100%; object-fit: cover; }
     .preview-placeholder { text-align: center; }
     .preview-placeholder .icon { font-size: 32px; opacity: 0.35; display: block; margin-bottom: 6px; }
     .preview-placeholder p { font-size: 14px; color: var(--gray-text); font-weight: 500; }
@@ -115,22 +115,16 @@
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isInClient()) { setStatus('❌ กรุณาเปิดในแอป LINE เท่านั้น', 'error'); return; }
       if (!liff.isLoggedIn()) { liff.login(); return; }
-
       const profile = await liff.getProfile();
       userId = profile.userId;
       displayName = profile.displayName;
-
       const urlParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
       const ctx = liff.getContext();
       groupId = urlParams.get('groupId') || hashParams.get('groupId') || ctx?.groupId || null;
-
       document.getElementById('user-name').textContent = displayName;
       document.getElementById('user-card').style.display = 'flex';
-
-      if (!groupId) {
-        setStatus('❌ ไม่พบข้อมูลกลุ่ม กรุณากดปุ่มจาก LINE ที่ Bot ส่งมาเท่านั้น', 'error');
-      }
+      if (!groupId) setStatus('❌ ไม่พบข้อมูลกลุ่ม กรุณากดปุ่มจาก LINE ที่ Bot ส่งมาเท่านั้น', 'error');
     } catch(err) {
       setStatus('❌ ' + err.message, 'error');
     }
@@ -160,15 +154,10 @@
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          if (width > maxWidth) {
-            height = Math.round(height * maxWidth / width);
-            width = maxWidth;
-          }
-          canvas.width = width;
-          canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          let w = img.width, h = img.height;
+          if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
           resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
         };
         img.onerror = reject;
@@ -179,6 +168,15 @@
     });
   }
 
+  // ส่ง GET request ผ่าน Image tag — ไม่ติด CORS เลย
+  function pingUrl(url) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = img.onerror = () => resolve();
+      img.src = url + '&_=' + Date.now();
+    });
+  }
+
   async function uploadImage() {
     if (!selectedFile) return;
     showOverlay('กำลังย่อรูป...');
@@ -186,7 +184,6 @@
 
     try {
       const compressedBase64 = await compressImage(selectedFile, 1200, 0.6);
-
       const chunkSize = 50000;
       const chunks = [];
       for (let i = 0; i < compressedBase64.length; i += chunkSize) {
@@ -198,11 +195,13 @@
         const url = new URL(WEBAPP_URL);
         url.searchParams.set('action', 'uploadChunk');
         url.searchParams.set('groupId', groupId || '');
-        url.searchParams.set('displayName', displayName || '');
+        url.searchParams.set('displayName', encodeURIComponent(displayName || ''));
         url.searchParams.set('chunk', chunks[i]);
         url.searchParams.set('chunkIndex', i);
         url.searchParams.set('totalChunks', chunks.length);
-        await fetch(url.toString(), { method: 'GET', mode: 'no-cors', redirect: 'follow' });
+        await pingUrl(url.toString());
+        // รอเล็กน้อยระหว่าง chunk
+        await new Promise(r => setTimeout(r, 300));
       }
 
       hideOverlay();
@@ -223,14 +222,14 @@
       url.searchParams.set('action', 'noSettlement');
       url.searchParams.set('groupId', groupId || '');
       url.searchParams.set('userId', userId || '');
-      url.searchParams.set('displayName', displayName || '');
-      await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
+      url.searchParams.set('displayName', encodeURIComponent(displayName || ''));
+      await pingUrl(url.toString());
       hideOverlay();
       setStatus('✅ บันทึกแล้วครับ ไม่มี Settlement วันนี้', 'success');
       setTimeout(() => liff.closeWindow(), 2000);
     } catch(err) {
       hideOverlay();
-      setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
+      setStatus('❌ เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
     }
   }
 
