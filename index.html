@@ -175,23 +175,30 @@ async function uploadImage() {
   document.getElementById('btn-upload').disabled = true;
 
   try {
-    // ย่อรูปก่อนส่ง
-    const compressedBase64 = await compressImage(selectedFile, 800, 0.7);
+    const compressedBase64 = await compressImage(selectedFile, 600, 0.5);
 
-    await sendToScript({
-      action: 'upload',
-      groupId: groupId || '',
-      userId: userId || '',
-      displayName: displayName || '',
-      imageBase64: compressedBase64
-    });
+    // ส่ง params ผ่าน URL แต่ส่ง imageBase64 ผ่าน body
+    const url = new URL(WEBAPP_URL);
+    url.searchParams.set('action', 'upload');
+    url.searchParams.set('groupId', groupId || '');
+    url.searchParams.set('userId', userId || '');
+    url.searchParams.set('displayName', displayName || '');
+
+    // บันทึกรูปใน ScriptCache แทน
+    const cacheUrl = new URL(WEBAPP_URL);
+    cacheUrl.searchParams.set('action', 'cacheImage');
+    cacheUrl.searchParams.set('groupId', groupId || '');
+    cacheUrl.searchParams.set('displayName', displayName || '');
+    cacheUrl.searchParams.set('imageBase64', compressedBase64);
+
+    await fetch(cacheUrl.toString(), { method: 'GET', redirect: 'follow' });
 
     hideOverlay();
     setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
     setTimeout(() => liff.closeWindow(), 2000);
   } catch(err) {
     hideOverlay();
-    setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
+    setStatus('❌ ' + err.message, 'error');
     document.getElementById('btn-upload').disabled = false;
   }
 }
