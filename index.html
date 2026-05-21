@@ -8,116 +8,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
     :root {
-      --green: #00B900;
-      --green-dark: #009900;
-      --red: #e53935;
-      --gray-bg: #f2f2f7;
-      --gray-border: #d1d1d6;
-      --gray-text: #8e8e93;
-      --text: #1c1c1e;
-      --white: #ffffff;
+      --green: #00B900; --red: #e53935; --gray-bg: #f2f2f7;
+      --gray-border: #d1d1d6; --gray-text: #8e8e93; --text: #1c1c1e; --white: #ffffff;
     }
-
-    html, body {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      font-family: 'Sarabun', sans-serif;
-      background: var(--gray-bg);
-      color: var(--text);
-    }
-
-    .screen {
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* Header */
-    .header {
-      background: var(--green);
-      padding: 20px 20px 44px;
-      color: white;
-      flex-shrink: 0;
-    }
-    .header-top {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 4px;
-    }
+    html, body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Sarabun', sans-serif; background: var(--gray-bg); color: var(--text); }
+    .screen { width: 100vw; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    .header { background: var(--green); padding: 20px 20px 44px; color: white; flex-shrink: 0; }
+    .header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
     .header-icon { font-size: 26px; }
     .header h1 { font-size: 18px; font-weight: 700; }
     .header .date { font-size: 13px; opacity: 0.85; }
-
-    /* Body */
-    .body {
-      flex: 1;
-      margin-top: -24px;
-      background: var(--gray-bg);
-      border-radius: 24px 24px 0 0;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
-      padding: 20px 16px 32px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    /* User card */
-    .user-card {
-      background: var(--white);
-      border-radius: 14px;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .user-avatar {
-      width: 40px; height: 40px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #00B900, #00d900);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; flex-shrink: 0;
-    }
+    .body { flex: 1; margin-top: -24px; background: var(--gray-bg); border-radius: 24px 24px 0 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px 16px 32px; display: flex; flex-direction: column; gap: 12px; }
+    .user-card { background: var(--white); border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #00B900, #00d900); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
     .user-name { font-size: 15px; font-weight: 600; }
     .user-label { font-size: 12px; color: var(--gray-text); margin-top: 1px; }
-
-    /* Section card */
-    .section-card {
-      background: var(--white);
-      border-radius: 14px;
-      padding: 14px 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-    .section-title {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--gray-text);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 10px;
-    }
-
-    /* Preview */
-    .preview {
-      width: 100%;
-      height: 160px;
-      border: 2px dashed var(--gray-border);
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      background: var(--gray-bg);
-      overflow: hidden;
-    }
+    .section-card { background: var(--white); border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .section-title { font-size: 12px; font-weight: 600; color: var(--gray-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .preview { width: 100%; height: 160px; border: 2px dashed var(--gray-border); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: var(--gray-bg); overflow: hidden; }
     .preview.has-image { border: 2px solid var(--green); }
     .preview:active { opacity: 0.8; }
     .preview img { width: 100%; height: 100%; object-fit: cover; }
@@ -126,76 +35,25 @@
     .preview-placeholder p { font-size: 14px; color: var(--gray-text); font-weight: 500; }
     .preview-placeholder small { font-size: 11px; color: var(--gray-border); }
     input[type="file"] { display: none; }
-
-    /* Buttons */
-    .btn {
-      width: 100%;
-      padding: 15px;
-      border-radius: 14px;
-      border: none;
-      font-size: 16px;
-      font-weight: 600;
-      font-family: 'Sarabun', sans-serif;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      transition: transform 0.15s, opacity 0.15s;
-    }
+    .btn { width: 100%; padding: 15px; border-radius: 14px; border: none; font-size: 16px; font-weight: 600; font-family: 'Sarabun', sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.15s, opacity 0.15s; }
     .btn:active { transform: scale(0.97); opacity: 0.88; }
-    .btn-upload {
-      background: var(--green);
-      color: white;
-      box-shadow: 0 4px 14px rgba(0,185,0,0.3);
-    }
-    .btn-upload:disabled {
-      background: var(--gray-border);
-      color: var(--gray-text);
-      box-shadow: none;
-      cursor: not-allowed;
-    }
-    .btn-none {
-      background: white;
-      color: var(--red);
-      border: 1.5px solid var(--red);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-
-    /* Status */
-    .status {
-      text-align: center;
-      font-size: 14px;
-      font-weight: 500;
-      padding: 12px 16px;
-      border-radius: 12px;
-      display: none;
-    }
+    .btn-upload { background: var(--green); color: white; box-shadow: 0 4px 14px rgba(0,185,0,0.3); }
+    .btn-upload:disabled { background: var(--gray-border); color: var(--gray-text); box-shadow: none; cursor: not-allowed; }
+    .btn-none { background: white; color: var(--red); border: 1.5px solid var(--red); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .status { text-align: center; font-size: 14px; font-weight: 500; padding: 12px 16px; border-radius: 12px; display: none; }
     .status.show { display: block; }
     .status.error { background: #fff0f0; color: var(--red); }
     .status.success { background: #f0fff0; color: var(--green); }
     .status.loading { background: var(--gray-bg); color: var(--gray-text); }
-
-    /* Overlay */
-    .overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.45);
-      z-index: 999;
-      align-items: center; justify-content: center; flex-direction: column; gap: 14px;
-    }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; align-items: center; justify-content: center; flex-direction: column; gap: 14px; }
     .overlay.show { display: flex; }
-    .spinner {
-      width: 44px; height: 44px;
-      border: 4px solid rgba(255,255,255,0.25);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
+    .spinner { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.25); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
     .overlay p { color: white; font-size: 15px; font-weight: 600; font-family: 'Sarabun', sans-serif; }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 <div class="screen">
-
   <div class="header">
     <div class="header-top">
       <div class="header-icon">📋</div>
@@ -203,9 +61,7 @@
     </div>
     <div class="date" id="date-label"></div>
   </div>
-
   <div class="body">
-
     <div class="user-card" id="user-card" style="display:none">
       <div class="user-avatar">👤</div>
       <div>
@@ -213,7 +69,6 @@
         <div class="user-label">ผู้ส่ง Settlement</div>
       </div>
     </div>
-
     <div class="section-card">
       <div class="section-title">📸 แนบรูป Settlement</div>
       <div class="preview" id="preview" onclick="document.getElementById('fileInput').click()">
@@ -226,20 +81,11 @@
       </div>
       <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this)">
     </div>
-
-    <button class="btn btn-upload" id="btn-upload" disabled onclick="uploadImage()">
-      📸 ส่ง Settlement
-    </button>
-
-    <button class="btn btn-none" onclick="confirmNoSettlement()">
-      ❌ ไม่มี Settlement วันนี้
-    </button>
-
+    <button class="btn btn-upload" id="btn-upload" disabled onclick="uploadImage()">📸 ส่ง Settlement</button>
+    <button class="btn btn-none" onclick="confirmNoSettlement()">❌ ไม่มี Settlement วันนี้</button>
     <div class="status" id="status"></div>
-
   </div>
 </div>
-
 <div class="overlay" id="overlay">
   <div class="spinner"></div>
   <p id="overlay-text">กำลังส่งข้อมูล...</p>
@@ -254,22 +100,15 @@
   let userId = null;
   let displayName = null;
 
-  // วันที่ภาษาไทย
   document.getElementById('date-label').textContent =
-    new Date().toLocaleDateString('th-TH', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    });
+    new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  // บังคับให้เต็มจอ
   function fixSize() {
     const vh = window.innerHeight;
     const vw = window.innerWidth;
-    document.querySelector('.screen').style.width = vw + 'px';
-    document.querySelector('.screen').style.height = vh + 'px';
-    document.querySelector('html').style.width = vw + 'px';
-    document.querySelector('html').style.height = vh + 'px';
-    document.querySelector('body').style.width = vw + 'px';
-    document.querySelector('body').style.height = vh + 'px';
+    document.querySelector('.screen').style.cssText = `width:${vw}px;height:${vh}px`;
+    document.documentElement.style.cssText = `width:${vw}px;height:${vh}px`;
+    document.body.style.cssText = `width:${vw}px;height:${vh}px`;
   }
   fixSize();
   window.addEventListener('resize', fixSize);
@@ -277,23 +116,16 @@
   async function init() {
     try {
       await liff.init({ liffId: LIFF_ID });
-      if (!liff.isInClient()) {
-        setStatus('❌ กรุณาเปิดในแอป LINE เท่านั้น', 'error'); return;
-      }
+      if (!liff.isInClient()) { setStatus('❌ กรุณาเปิดในแอป LINE เท่านั้น', 'error'); return; }
       if (!liff.isLoggedIn()) { liff.login(); return; }
-
       const profile = await liff.getProfile();
       userId = profile.userId;
       displayName = profile.displayName;
       const ctx = liff.getContext();
       groupId = ctx?.groupId || null;
-
       document.getElementById('user-name').textContent = displayName;
       document.getElementById('user-card').style.display = 'flex';
-
-      if (!groupId) {
-        setStatus('❌ กรุณาเปิดจากกลุ่ม LINE เท่านั้น', 'error');
-      }
+      if (!groupId) setStatus('❌ กรุณาเปิดจากกลุ่ม LINE เท่านั้น', 'error');
     } catch(err) {
       setStatus('❌ ' + err.message, 'error');
     }
@@ -302,9 +134,7 @@
   function handleFile(input) {
     const file = input.files[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setStatus('❌ ไฟล์ใหญ่เกิน 10MB', 'error'); return;
-    }
+    if (file.size > 10 * 1024 * 1024) { setStatus('❌ ไฟล์ใหญ่เกิน 10MB', 'error'); return; }
     selectedFile = file;
     const reader = new FileReader();
     reader.onload = e => {
@@ -318,62 +148,57 @@
     reader.readAsDataURL(file);
   }
 
-async function uploadImage() {
-  if (!selectedFile) return;
-  showOverlay('กำลังอัปโหลดรูป...');
-  document.getElementById('btn-upload').disabled = true;
-  const reader = new FileReader();
-  reader.onload = async e => {
-    try {
-      const res = await fetch(WEBAPP_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({
+  // ส่งข้อมูลผ่าน URL params แทน POST body เพราะ no-cors ไม่ส่ง body
+  async function sendToScript(params) {
+    const url = new URL(WEBAPP_URL);
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    await fetch(url.toString(), { method: 'GET', redirect: 'follow' });
+  }
+
+  async function uploadImage() {
+    if (!selectedFile) return;
+    showOverlay('กำลังอัปโหลดรูป...');
+    document.getElementById('btn-upload').disabled = true;
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        await sendToScript({
           action: 'upload',
           groupId: groupId || '',
           userId: userId || '',
           displayName: displayName || '',
           imageBase64: e.target.result.split(',')[1]
-        })
-      });
-      hideOverlay();
-      setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
-      setTimeout(() => liff.closeWindow(), 2000);
-    } catch(err) {
-      hideOverlay();
-      setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
-      document.getElementById('btn-upload').disabled = false;
-    }
-  };
-  reader.readAsDataURL(selectedFile);
-}
-async function confirmNoSettlement() {
-  if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
-  showOverlay('กำลังบันทึก...');
+        });
+        hideOverlay();
+        setStatus('✅ ส่ง Settlement สำเร็จแล้วครับ', 'success');
+        setTimeout(() => liff.closeWindow(), 2000);
+      } catch(err) {
+        hideOverlay();
+        setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
+        document.getElementById('btn-upload').disabled = false;
+      }
+    };
+    reader.readAsDataURL(selectedFile);
+  }
 
-  try {
-    const res = await fetch(WEBAPP_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
+  async function confirmNoSettlement() {
+    if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
+    showOverlay('กำลังบันทึก...');
+    try {
+      await sendToScript({
         action: 'noSettlement',
         groupId: groupId || '',
         userId: userId || '',
         displayName: displayName || ''
-      })
-    });
-
-    hideOverlay();
-    setStatus('✅ บันทึกแล้วครับ ไม่มี Settlement วันนี้', 'success');
-    setTimeout(() => liff.closeWindow(), 2000);
-
-  } catch(err) {
-    hideOverlay();
-    setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
+      });
+      hideOverlay();
+      setStatus('✅ บันทึกแล้วครับ ไม่มี Settlement วันนี้', 'success');
+      setTimeout(() => liff.closeWindow(), 2000);
+    } catch(err) {
+      hideOverlay();
+      setStatus('❌ เชื่อมต่อไม่ได้ กรุณาลองใหม่', 'error');
+    }
   }
-}
 
   function setStatus(msg, type) {
     const el = document.getElementById('status');
