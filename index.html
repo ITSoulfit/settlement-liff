@@ -18,8 +18,10 @@
     .header .date { font-size: 13px; opacity: 0.85; }
     .body { flex: 1; margin-top: -24px; background: var(--gray-bg); border-radius: 24px 24px 0 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px 16px 32px; display: flex; flex-direction: column; gap: 12px; }
     .user-card { background: var(--white); border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #00B900, #00d900); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #00B900, #00d900); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; color: white;}
+    .user-avatar.loading { background: var(--gray-border); }
     .user-name { font-size: 15px; font-weight: 600; }
+    .user-name.loading { color: var(--gray-text); font-style: italic; }
     .user-label { font-size: 12px; color: var(--gray-text); margin-top: 1px; }
     .section-card { background: var(--white); border-radius: 14px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .section-title { font-size: 12px; font-weight: 600; color: var(--gray-text); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
@@ -33,10 +35,11 @@
     .preview-placeholder small { font-size: 11px; color: var(--gray-border); }
     input[type="file"] { display: none; }
     .btn { width: 100%; padding: 15px; border-radius: 14px; border: none; font-size: 16px; font-weight: 600; font-family: 'Sarabun', sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.15s, opacity 0.15s; }
-    .btn:active { transform: scale(0.97); opacity: 0.88; }
+    .btn:active:not(:disabled) { transform: scale(0.97); opacity: 0.88; }
     .btn-upload { background: var(--green); color: white; box-shadow: 0 4px 14px rgba(0,185,0,0.3); }
-    .btn-upload:disabled { background: var(--gray-border); color: var(--gray-text); box-shadow: none; cursor: not-allowed; }
+    .btn-upload:disabled { background: var(--gray-border); color: var(--white); box-shadow: none; cursor: not-allowed; }
     .btn-none { background: white; color: var(--red); border: 1.5px solid var(--red); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .btn-none:disabled { border-color: var(--gray-border); color: var(--gray-text); background: var(--gray-bg); box-shadow: none; cursor: not-allowed; }
     .status { text-align: center; font-size: 14px; font-weight: 500; padding: 12px 16px; border-radius: 12px; display: none; }
     .status.show { display: block; }
     .status.error { background: #fff0f0; color: var(--red); }
@@ -59,10 +62,10 @@
     <div class="date" id="date-label"></div>
   </div>
   <div class="body">
-    <div class="user-card" id="user-card" style="display:none">
-      <div class="user-avatar">👤</div>
+    <div class="user-card" id="user-card">
+      <div class="user-avatar loading" id="user-avatar">⏳</div>
       <div>
-        <div class="user-name" id="user-name">กำลังโหลด...</div>
+        <div class="user-name loading" id="user-name">กำลังดึงข้อมูล LINE...</div>
         <div class="user-label">ผู้ส่ง Settlement</div>
       </div>
     </div>
@@ -79,7 +82,7 @@
       <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this)">
     </div>
     <button class="btn btn-upload" id="btn-upload" disabled onclick="uploadImage()">📸 ส่ง Settlement</button>
-    <button class="btn btn-none" onclick="confirmNoSettlement()">❌ ไม่มี Settlement วันนี้</button>
+    <button class="btn btn-none" id="btn-none" disabled onclick="confirmNoSettlement()">❌ ไม่มี Settlement วันนี้</button>
     <div class="status" id="status"></div>
   </div>
 </div>
@@ -96,6 +99,7 @@
   let groupId = null;
   let userId = null;
   let displayName = null;
+  let isProfileLoaded = false; // ตัวแปรเช็คว่าโหลดชื่อเสร็จหรือยัง
 
   document.getElementById('date-label').textContent =
     new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -115,18 +119,48 @@
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isInClient()) { setStatus('❌ กรุณาเปิดในแอป LINE เท่านั้น', 'error'); return; }
       if (!liff.isLoggedIn()) { liff.login(); return; }
+      
+      // ดึงข้อมูลโปรไฟล์ (ใช้เวลาตรงนี้นิดนึง)
       const profile = await liff.getProfile();
       userId = profile.userId;
       displayName = profile.displayName;
+      
       const urlParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
       const ctx = liff.getContext();
       groupId = urlParams.get('groupId') || hashParams.get('groupId') || ctx?.groupId || null;
+      
+      if (!groupId) {
+        setStatus('❌ ไม่พบข้อมูลกลุ่ม กรุณากดปุ่มจาก LINE ที่ Bot ส่งมาเท่านั้น', 'error');
+        document.getElementById('user-name').textContent = 'ข้อผิดพลาด: ไม่พบกลุ่ม';
+        return;
+      }
+
+      // โหลดเสร็จแล้ว อัปเดตหน้าจอให้แสดงชื่อ
       document.getElementById('user-name').textContent = displayName;
-      document.getElementById('user-card').style.display = 'flex';
-      if (!groupId) setStatus('❌ ไม่พบข้อมูลกลุ่ม กรุณากดปุ่มจาก LINE ที่ Bot ส่งมาเท่านั้น', 'error');
+      document.getElementById('user-name').classList.remove('loading');
+      document.getElementById('user-avatar').textContent = '👤';
+      document.getElementById('user-avatar').classList.remove('loading');
+      
+      isProfileLoaded = true; // ให้สัญญาณว่าโหลดชื่อเสร็จแล้ว
+      checkFormReady(); // สั่งตรวจสอบเพื่อปลดล็อคปุ่ม
+
     } catch(err) {
       setStatus('❌ ' + err.message, 'error');
+      document.getElementById('user-name').textContent = 'โหลดข้อมูลล้มเหลว';
+    }
+  }
+
+  // ฟังก์ชันเช็คว่าพร้อมปลดล็อคปุ่มหรือยัง
+  function checkFormReady() {
+    if (!isProfileLoaded) return; // ถ้าชื่อยังไม่มา ห้ามปลดล็อค
+
+    // ถ้าโหลดชื่อเสร็จแล้ว ปุ่มไม่มี Settlement กดได้เลย
+    document.getElementById('btn-none').disabled = false;
+
+    // ถ้าโหลดชื่อเสร็จแล้ว และ เลือกรูปแล้ว ปุ่มส่งถึงจะกดได้
+    if (selectedFile) {
+      document.getElementById('btn-upload').disabled = false;
     }
   }
 
@@ -134,6 +168,7 @@
     const file = input.files[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { setStatus('❌ ไฟล์ใหญ่เกิน 10MB', 'error'); return; }
+    
     selectedFile = file;
     const reader = new FileReader();
     reader.onload = e => {
@@ -141,8 +176,9 @@
       document.getElementById('preview-img').style.display = 'block';
       document.getElementById('preview-placeholder').style.display = 'none';
       document.getElementById('preview').classList.add('has-image');
-      document.getElementById('btn-upload').disabled = false;
       setStatus('', '');
+      
+      checkFormReady(); // เลือกรูปเสร็จ เช็คว่าปลดล็อคปุ่มได้หรือยัง
     };
     reader.readAsDataURL(file);
   }
@@ -169,7 +205,7 @@
   }
 
   async function uploadImage() {
-    if (!selectedFile) return;
+    if (!selectedFile || !isProfileLoaded) return; // ดักไว้อีกชั้น
     showOverlay('กำลังย่อรูป...');
     document.getElementById('btn-upload').disabled = true;
     try {
@@ -185,6 +221,7 @@
       });
       await fetch(WEBAPP_URL, {
         method: 'POST',
+        mode: 'no-cors', // ใส่ไว้กันเหนียวเวลาเปิดบนมือถือ
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString()
       });
@@ -198,8 +235,8 @@
     }
   }
 
-  // ✅ แก้ตรงนี้ — เปลี่ยนจาก pingUrl เป็น fetch POST
   async function confirmNoSettlement() {
+    if (!isProfileLoaded) return; // ดักไว้อีกชั้น
     if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
     showOverlay('กำลังบันทึก...');
     try {
@@ -211,6 +248,7 @@
       });
       await fetch(WEBAPP_URL, {
         method: 'POST',
+        mode: 'no-cors', // ใส่ไว้กันเหนียว
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString()
       });
