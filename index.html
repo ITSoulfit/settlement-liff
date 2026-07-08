@@ -16,6 +16,7 @@
     .header-icon { font-size: 26px; }
     .header h1 { font-size: 18px; font-weight: 700; }
     .header .date { font-size: 13px; opacity: 0.85; }
+    .header .branch-name { font-size: 13px; opacity: 0.95; font-weight: 600; margin-top: 2px; }
     .body { flex: 1; margin-top: -24px; background: var(--gray-bg); border-radius: 24px 24px 0 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px 16px 32px; display: flex; flex-direction: column; gap: 12px; }
     .user-card { background: var(--white); border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #00B900, #00d900); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; color: white;}
@@ -60,6 +61,7 @@
       <h1>Settlement ประจำวัน</h1>
     </div>
     <div class="date" id="date-label"></div>
+    <div class="branch-name" id="branch-label"></div>
   </div>
   <div class="body">
     <div class="user-card" id="user-card">
@@ -92,11 +94,13 @@
 </div>
 
 <script>
-  const LIFF_ID = '2010146725-QLSYqG3m';
-  const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzo93qMu3K3xZI2ncpqG4fqGM_HURUS4DYFue_7aayzf-BA-LbihpSqBSU2QTwB3Vbx/exec';
+  // มีบอทตัวเดียวแล้ว จึงมี LIFF app เดียว ใส่ LIFF_ID ที่นี่ตัวเดียวพอ
+  const LIFF_ID = 'ใส่ LIFF_ID ของคุณตรงนี้';
+  // WEBAPP_URL คือ Web App เดียวกันของ Code.gs (ตัวรับข้อมูลอย่างเดียว ไม่มี push แล้ว)
+  const WEBAPP_URL = 'ใส่ URL ของ Web App ที่ deploy จาก Code.gs ตรงนี้';
 
   let selectedFile = null;
-  let groupId = null;
+  let branchId = null;  // ระบุสาขา (อ่านจาก query string ที่แชร์ลิงก์ไว้ให้แต่ละกลุ่ม)
   let userId = null;
   let displayName = null;
   let isProfileLoaded = false; // ตัวแปรเช็คว่าโหลดชื่อเสร็จหรือยัง
@@ -116,32 +120,33 @@
 
   async function init() {
     try {
+      // อ่าน branchId จาก query string ก่อน (ลิงก์แต่ละสาขาจะต่างกันแค่ ?branchId=XXX)
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+      branchId = urlParams.get('branchId') || hashParams.get('branchId') || null;
+
+      if (!branchId) {
+        setStatus('❌ ไม่พบข้อมูลสาขา กรุณาใช้ลิงก์ที่แอดมินให้ไว้เฉพาะสาขาของคุณเท่านั้น', 'error');
+        document.getElementById('user-name').textContent = 'ข้อผิดพลาด: ไม่พบสาขา';
+        return;
+      }
+      document.getElementById('branch-label').textContent = 'สาขา: ' + branchId;
+
       await liff.init({ liffId: LIFF_ID });
       if (!liff.isInClient()) { setStatus('❌ กรุณาเปิดในแอป LINE เท่านั้น', 'error'); return; }
       if (!liff.isLoggedIn()) { liff.login(); return; }
-      
+
       // ดึงข้อมูลโปรไฟล์ (ใช้เวลาตรงนี้นิดนึง)
       const profile = await liff.getProfile();
       userId = profile.userId;
       displayName = profile.displayName;
-      
-      const urlParams = new URLSearchParams(window.location.search);
-      const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
-      const ctx = liff.getContext();
-      groupId = urlParams.get('groupId') || hashParams.get('groupId') || ctx?.groupId || null;
-      
-      if (!groupId) {
-        setStatus('❌ ไม่พบข้อมูลกลุ่ม กรุณากดปุ่มจาก LINE ที่ Bot ส่งมาเท่านั้น', 'error');
-        document.getElementById('user-name').textContent = 'ข้อผิดพลาด: ไม่พบกลุ่ม';
-        return;
-      }
 
       // โหลดเสร็จแล้ว อัปเดตหน้าจอให้แสดงชื่อ
       document.getElementById('user-name').textContent = displayName;
       document.getElementById('user-name').classList.remove('loading');
       document.getElementById('user-avatar').textContent = '👤';
       document.getElementById('user-avatar').classList.remove('loading');
-      
+
       isProfileLoaded = true; // ให้สัญญาณว่าโหลดชื่อเสร็จแล้ว
       checkFormReady(); // สั่งตรวจสอบเพื่อปลดล็อคปุ่ม
 
@@ -168,7 +173,7 @@
     const file = input.files[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { setStatus('❌ ไฟล์ใหญ่เกิน 10MB', 'error'); return; }
-    
+
     selectedFile = file;
     const reader = new FileReader();
     reader.onload = e => {
@@ -177,7 +182,7 @@
       document.getElementById('preview-placeholder').style.display = 'none';
       document.getElementById('preview').classList.add('has-image');
       setStatus('', '');
-      
+
       checkFormReady(); // เลือกรูปเสร็จ เช็คว่าปลดล็อคปุ่มได้หรือยัง
     };
     reader.readAsDataURL(file);
@@ -213,7 +218,7 @@
       showOverlay('กำลังส่ง...');
       const body = new URLSearchParams({
         action: 'uploadChunk',
-        groupId: groupId || '',
+        branchId: branchId || '',
         displayName: displayName || '',
         chunk: compressedBase64,
         chunkIndex: '0',
@@ -242,7 +247,7 @@
     try {
       const body = new URLSearchParams({
         action: 'noSettlement',
-        groupId: groupId || '',
+        branchId: branchId || '',
         userId: userId || '',
         displayName: displayName || ''
       });
