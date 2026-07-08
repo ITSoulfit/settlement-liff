@@ -16,7 +16,6 @@
     .header-icon { font-size: 26px; }
     .header h1 { font-size: 18px; font-weight: 700; }
     .header .date { font-size: 13px; opacity: 0.85; }
-    .header .branch-name { font-size: 13px; opacity: 0.95; font-weight: 600; margin-top: 2px; }
     .body { flex: 1; margin-top: -24px; background: var(--gray-bg); border-radius: 24px 24px 0 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px 16px 32px; display: flex; flex-direction: column; gap: 12px; }
     .user-card { background: var(--white); border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
     .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #00B900, #00d900); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; color: white;}
@@ -51,9 +50,6 @@
     .spinner { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.25); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
     .overlay p { color: white; font-size: 15px; font-weight: 600; font-family: 'Sarabun', sans-serif; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .setup-list { display: flex; flex-direction: column; gap: 8px; }
-    .setup-item { background: var(--white); border: 1.5px solid var(--gray-border); border-radius: 12px; padding: 14px 16px; font-size: 15px; font-weight: 600; cursor: pointer; text-align: left; }
-    .setup-item:active { background: var(--gray-bg); }
   </style>
 </head>
 <body>
@@ -64,16 +60,30 @@
       <h1>Settlement ประจำวัน</h1>
     </div>
     <div class="date" id="date-label"></div>
-    <div class="branch-name" id="branch-label"></div>
   </div>
-  <div class="body" id="body-content">
+  <div class="body">
     <div class="user-card" id="user-card">
       <div class="user-avatar loading" id="user-avatar">⏳</div>
       <div>
-        <div class="user-name loading" id="user-name">กำลังตรวจสอบกลุ่ม...</div>
+        <div class="user-name loading" id="user-name">กำลังดึงข้อมูล LINE...</div>
         <div class="user-label">ผู้ส่ง Settlement</div>
       </div>
     </div>
+    <div class="section-card">
+      <div class="section-title">📸 แนบรูป Settlement</div>
+      <div class="preview" id="preview" onclick="document.getElementById('fileInput').click()">
+        <div class="preview-placeholder" id="preview-placeholder">
+          <span class="icon">🖼️</span>
+          <p>แตะเพื่อเลือกรูป</p>
+          <small>JPG, PNG ไม่เกิน 10MB</small>
+        </div>
+        <img id="preview-img" style="display:none"/>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this)">
+    </div>
+    <button class="btn btn-upload" id="btn-upload" disabled onclick="uploadImage()">📸 ส่ง Settlement</button>
+    <button class="btn btn-none" id="btn-none" disabled onclick="confirmNoSettlement()">❌ ไม่มี Settlement วันนี้</button>
+    <div class="status" id="status"></div>
   </div>
 </div>
 <div class="overlay" id="overlay">
@@ -82,16 +92,14 @@
 </div>
 
 <script>
-  const LIFF_ID = 'ใส่ LIFF_ID ของคุณตรงนี้';
-  // WEBAPP_URL คือ Web App เดียวกันของ Code.gs
-  const WEBAPP_URL = 'ใส่ URL ของ Web App ที่ deploy จาก Code.gs ตรงนี้';
+  const LIFF_ID = '2010146725-QLSYqG3m';
+  const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzo93qMu3K3xZI2ncpqG4fqGM_HURUS4DYFue_7aayzf-BA-LbihpSqBSU2QTwB3Vbx/exec';
 
   let selectedFile = null;
-  let branchId = null;
   let groupId = null;
   let userId = null;
   let displayName = null;
-  let isProfileLoaded = false;
+  let isProfileLoaded = false; // ตัวแปรเช็คว่าโหลดชื่อเสร็จหรือยัง
 
   document.getElementById('date-label').textContent =
     new Date().toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -109,130 +117,58 @@
   async function init() {
     try {
       await liff.init({ liffId: LIFF_ID });
-      if (!liff.isInClient()) { setBodyError('❌ กรุณาเปิดในแอป LINE เท่านั้น'); return; }
+      if (!liff.isInClient()) { setStatus('❌ กรุณาเปิดในแอป LINE เท่านั้น', 'error'); return; }
       if (!liff.isLoggedIn()) { liff.login(); return; }
-
+      
+      // ดึงข้อมูลโปรไฟล์ (ใช้เวลาตรงนี้นิดนึง)
       const profile = await liff.getProfile();
       userId = profile.userId;
       displayName = profile.displayName;
-
-      // จุดสำคัญ: ดึง Group ID จาก context ของ LIFF เอง ไม่ต้องพึ่ง query string แล้ว
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
       const ctx = liff.getContext();
-      groupId = ctx && ctx.groupId ? ctx.groupId : null;
-
+      groupId = urlParams.get('groupId') || hashParams.get('groupId') || ctx?.groupId || null;
+      
       if (!groupId) {
-        setBodyError('❌ กรุณาเปิดลิงก์นี้จากภายในกลุ่มไลน์ของสาขาคุณเท่านั้น (เปิดจากแชทส่วนตัวไม่ได้)');
+        setStatus('❌ ไม่พบข้อมูลกลุ่ม กรุณากดปุ่มจาก LINE ที่ Bot ส่งมาเท่านั้น', 'error');
+        document.getElementById('user-name').textContent = 'ข้อผิดพลาด: ไม่พบกลุ่ม';
         return;
       }
 
-      // เช็คกับเซิร์ฟเวอร์ว่า Group ID นี้ผูกกับสาขาไหนไว้แล้วหรือยัง
-      const res = await fetch(`${WEBAPP_URL}?action=resolveBranch&groupId=${encodeURIComponent(groupId)}`);
-      const result = await res.json();
-
-      if (result.matched) {
-        branchId = result.branchId;
-        renderUploadForm(result.branchName);
-      } else {
-        renderSetupScreen(result.unassignedBranches || []);
-      }
+      // โหลดเสร็จแล้ว อัปเดตหน้าจอให้แสดงชื่อ
+      document.getElementById('user-name').textContent = displayName;
+      document.getElementById('user-name').classList.remove('loading');
+      document.getElementById('user-avatar').textContent = '👤';
+      document.getElementById('user-avatar').classList.remove('loading');
+      
+      isProfileLoaded = true; // ให้สัญญาณว่าโหลดชื่อเสร็จแล้ว
+      checkFormReady(); // สั่งตรวจสอบเพื่อปลดล็อคปุ่ม
 
     } catch(err) {
-      setBodyError('❌ ' + err.message);
+      setStatus('❌ ' + err.message, 'error');
+      document.getElementById('user-name').textContent = 'โหลดข้อมูลล้มเหลว';
     }
   }
 
-  // ===== หน้าตั้งค่าครั้งแรก (กลุ่มนี้ยังไม่เคยผูกกับสาขาไหน) =====
-  function renderSetupScreen(branches) {
-    document.getElementById('user-name').textContent = 'ตั้งค่าครั้งแรก';
-    document.getElementById('user-name').classList.remove('loading');
-    document.getElementById('user-avatar').textContent = '⚙️';
-    document.getElementById('user-avatar').classList.remove('loading');
+  // ฟังก์ชันเช็คว่าพร้อมปลดล็อคปุ่มหรือยัง
+  function checkFormReady() {
+    if (!isProfileLoaded) return; // ถ้าชื่อยังไม่มา ห้ามปลดล็อค
 
-    const body = document.getElementById('body-content');
-    if (!branches.length) {
-      body.innerHTML += `<div class="section-card"><p>ไม่พบสาขาที่ยังไม่ได้ผูกกลุ่ม กรุณาติดต่อแอดมิน</p></div>`;
-      return;
+    // ถ้าโหลดชื่อเสร็จแล้ว ปุ่มไม่มี Settlement กดได้เลย
+    document.getElementById('btn-none').disabled = false;
+
+    // ถ้าโหลดชื่อเสร็จแล้ว และ เลือกรูปแล้ว ปุ่มส่งถึงจะกดได้
+    if (selectedFile) {
+      document.getElementById('btn-upload').disabled = false;
     }
-    let html = `<div class="section-card">
-      <div class="section-title">กลุ่มนี้ยังไม่เคยผูกกับสาขา — เลือกว่ากลุ่มนี้คือสาขาไหน (ทำครั้งเดียว)</div>
-      <div class="setup-list" id="setup-list"></div>
-    </div>`;
-    body.insertAdjacentHTML('beforeend', html);
-    const list = document.getElementById('setup-list');
-    branches.forEach(b => {
-      const btn = document.createElement('button');
-      btn.className = 'setup-item';
-      btn.textContent = b.branchName;
-      btn.onclick = () => confirmRegister(b.branchId, b.branchName);
-      list.appendChild(btn);
-    });
-  }
-
-  async function confirmRegister(bId, bName) {
-    if (!confirm(`ยืนยันผูกกลุ่มนี้กับสาขา "${bName}" ใช่หรือไม่?\nทำครั้งเดียวเท่านั้น หลังจากนี้จะไม่ถามอีก`)) return;
-    showOverlay('กำลังบันทึก...');
-    try {
-      const body = new URLSearchParams({ action: 'registerGroup', groupId: groupId, branchId: bId });
-      await fetch(WEBAPP_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString()
-      });
-      hideOverlay();
-      branchId = bId;
-      document.getElementById('body-content').innerHTML = `
-        <div class="user-card">
-          <div class="user-avatar">👤</div>
-          <div>
-            <div class="user-name">${displayName}</div>
-            <div class="user-label">ผู้ส่ง Settlement</div>
-          </div>
-        </div>`;
-      renderUploadForm(bName);
-    } catch (err) {
-      hideOverlay();
-      setBodyError('❌ บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
-    }
-  }
-
-  // ===== หน้าอัปโหลดปกติ (กลุ่มนี้ผูกกับสาขาแล้ว) =====
-  function renderUploadForm(branchName) {
-    document.getElementById('branch-label').textContent = 'สาขา: ' + branchName;
-    document.getElementById('user-name').textContent = displayName;
-    document.getElementById('user-name').classList.remove('loading');
-    document.getElementById('user-avatar').textContent = '👤';
-    document.getElementById('user-avatar').classList.remove('loading');
-
-    const body = document.getElementById('body-content');
-    const existingCards = body.querySelectorAll('.section-card, .btn, .status');
-    existingCards.forEach(el => el.remove());
-
-    body.insertAdjacentHTML('beforeend', `
-      <div class="section-card">
-        <div class="section-title">📸 แนบรูป Settlement</div>
-        <div class="preview" id="preview" onclick="document.getElementById('fileInput').click()">
-          <div class="preview-placeholder" id="preview-placeholder">
-            <span class="icon">🖼️</span>
-            <p>แตะเพื่อเลือกรูป</p>
-            <small>JPG, PNG ไม่เกิน 10MB</small>
-          </div>
-          <img id="preview-img" style="display:none"/>
-        </div>
-        <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this)">
-      </div>
-      <button class="btn btn-upload" id="btn-upload" onclick="uploadImage()">📸 ส่ง Settlement</button>
-      <button class="btn btn-none" id="btn-none" onclick="confirmNoSettlement()">❌ ไม่มี Settlement วันนี้</button>
-      <div class="status" id="status"></div>
-    `);
-    isProfileLoaded = true;
   }
 
   function handleFile(input) {
     const file = input.files[0];
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { setStatus('❌ ไฟล์ใหญ่เกิน 10MB', 'error'); return; }
-
+    
     selectedFile = file;
     const reader = new FileReader();
     reader.onload = e => {
@@ -241,6 +177,8 @@
       document.getElementById('preview-placeholder').style.display = 'none';
       document.getElementById('preview').classList.add('has-image');
       setStatus('', '');
+      
+      checkFormReady(); // เลือกรูปเสร็จ เช็คว่าปลดล็อคปุ่มได้หรือยัง
     };
     reader.readAsDataURL(file);
   }
@@ -267,7 +205,7 @@
   }
 
   async function uploadImage() {
-    if (!selectedFile || !isProfileLoaded) { setStatus('❌ กรุณาเลือกรูปก่อน', 'error'); return; }
+    if (!selectedFile || !isProfileLoaded) return; // ดักไว้อีกชั้น
     showOverlay('กำลังย่อรูป...');
     document.getElementById('btn-upload').disabled = true;
     try {
@@ -275,7 +213,7 @@
       showOverlay('กำลังส่ง...');
       const body = new URLSearchParams({
         action: 'uploadChunk',
-        branchId: branchId || '',
+        groupId: groupId || '',
         displayName: displayName || '',
         chunk: compressedBase64,
         chunkIndex: '0',
@@ -283,7 +221,7 @@
       });
       await fetch(WEBAPP_URL, {
         method: 'POST',
-        mode: 'no-cors',
+        mode: 'no-cors', // ใส่ไว้กันเหนียวเวลาเปิดบนมือถือ
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString()
       });
@@ -298,19 +236,19 @@
   }
 
   async function confirmNoSettlement() {
-    if (!isProfileLoaded) return;
+    if (!isProfileLoaded) return; // ดักไว้อีกชั้น
     if (!confirm('ยืนยันว่าไม่มี Settlement วันนี้?')) return;
     showOverlay('กำลังบันทึก...');
     try {
       const body = new URLSearchParams({
         action: 'noSettlement',
-        branchId: branchId || '',
+        groupId: groupId || '',
         userId: userId || '',
         displayName: displayName || ''
       });
       await fetch(WEBAPP_URL, {
         method: 'POST',
-        mode: 'no-cors',
+        mode: 'no-cors', // ใส่ไว้กันเหนียว
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString()
       });
@@ -323,17 +261,8 @@
     }
   }
 
-  function setBodyError(msg) {
-    document.getElementById('user-name').textContent = 'เกิดข้อผิดพลาด';
-    document.getElementById('user-avatar').textContent = '⚠️';
-    document.getElementById('user-avatar').classList.remove('loading');
-    const body = document.getElementById('body-content');
-    body.insertAdjacentHTML('beforeend', `<div class="status show error">${msg}</div>`);
-  }
-
   function setStatus(msg, type) {
     const el = document.getElementById('status');
-    if (!el) return;
     el.textContent = msg;
     el.className = 'status' + (msg ? ' show ' + type : '');
   }
